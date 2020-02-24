@@ -178,6 +178,7 @@ void CFileView::OnProperties()
 void CFileView::OnFileOpen()
 {
 	// TODO: 여기에 명령 처리기 코드를 추가합니다.
+	AfxMessageBox(_T("속성...."));
 }
 
 void CFileView::OnFileOpenWith()

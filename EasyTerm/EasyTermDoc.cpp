@@ -11,6 +11,10 @@
 #endif
 
 #include "EasyTermDoc.h"
+#include "MainFrm.h"
+#include "EasyTermView.h"
+
+#include "CSecsResponseData.h"
 
 #include <propkey.h>
 
@@ -31,11 +35,13 @@ END_MESSAGE_MAP()
 CEasyTermDoc::CEasyTermDoc() noexcept
 {
 	// TODO: 여기에 일회성 생성 코드를 추가합니다.
-
+	m_pResp = new CResponse();
 }
 
 CEasyTermDoc::~CEasyTermDoc()
 {
+	delete m_pResp;
+	m_pResp = NULL;
 }
 
 BOOL CEasyTermDoc::OnNewDocument()
@@ -136,3 +142,70 @@ void CEasyTermDoc::Dump(CDumpContext& dc) const
 
 
 // CEasyTermDoc 명령
+bool CEasyTermDoc::OpenDataFile(CString sFileName, CString &strError)
+{
+	//AfxMessageBox(sFileName);
+	int	  iBufCnt = 0;
+	CFile dataFile;
+	char  szErrMsg[512] = { 0, };
+	unsigned char  szLinebuf[512] = { 0, };
+
+	CFileException ex;
+
+	if (dataFile.Open(sFileName, CFile::modeRead | CFile::shareDenyWrite, &ex)) {
+		DWORD dwRead = 0;
+
+		ULONG ulSize = (ULONG) dataFile.GetLength();
+
+		CMainFrame* pFrm = (CMainFrame *)AfxGetMainWnd();
+		CEasyTermView* pView = (CEasyTermView *)pFrm->GetActiveView();
+
+		BYTE* buf = (BYTE *)malloc(ulSize);
+		if (buf == NULL) {
+			strError = "Buffer memory allocate fail[162]";
+			return false;
+		}
+
+		try
+		{
+			dwRead = dataFile.Read(buf, ulSize);
+			if (dwRead > 0) {
+				for (ULONG i = 0; i < ulSize; i++) {
+					szLinebuf[iBufCnt++] = *(buf+i);
+					if ((*(buf + i) == 0x0A) || (*(buf + i) == 0x0D) || (*(buf + i) == 0x00)) {
+						if (iBufCnt > 1) {
+							iBufCnt = 0;
+							//pView->AddDatatoListbox(0, (char *)szLinebuf);
+							memset(szLinebuf, 0, sizeof(char) * 512);
+						}
+					}
+
+				}
+			}
+
+			free(buf);
+
+			return true;
+		}
+		catch (CException* ex)
+		{
+			free(buf);
+			AfxMessageBox("Error" );
+		}
+
+	}
+	else {
+		strError = "";
+		strError.AppendFormat(_T("File Open Error : "));
+		strError += sFileName;
+		strError.AppendFormat(_T(" / Exception :"));
+		ex.GetErrorMessage( szErrMsg, 511, 0);
+		strError.AppendFormat(_T(" %s"), szErrMsg );
+
+		//MessageBox(AfxGetMainWnd()->m_hWnd, szErrMsg, "Error", MB_ICONERROR);
+
+		return false;
+	}
+
+	return false;
+}

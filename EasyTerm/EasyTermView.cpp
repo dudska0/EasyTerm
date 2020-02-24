@@ -29,6 +29,8 @@ BEGIN_MESSAGE_MAP(CEasyTermView, CFormView)
 	ON_COMMAND(ID_FILE_PRINT_PREVIEW, &CEasyTermView::OnFilePrintPreview)
 	ON_WM_CONTEXTMENU()
 	ON_WM_RBUTTONUP()
+	ON_WM_SIZE()
+	ON_BN_CLICKED(IDC_BUTTON1, &CEasyTermView::OnBnClickedButton1)
 END_MESSAGE_MAP()
 
 // CEasyTermView 생성/소멸
@@ -47,6 +49,7 @@ CEasyTermView::~CEasyTermView()
 void CEasyTermView::DoDataExchange(CDataExchange* pDX)
 {
 	CFormView::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_LIST1, m_stdout);
 }
 
 BOOL CEasyTermView::PreCreateWindow(CREATESTRUCT& cs)
@@ -62,7 +65,6 @@ void CEasyTermView::OnInitialUpdate()
 	CFormView::OnInitialUpdate();
 	GetParentFrame()->RecalcLayout();
 	ResizeParentToFit();
-
 }
 
 
@@ -133,3 +135,58 @@ CEasyTermDoc* CEasyTermView::GetDocument() const // 디버그되지 않은 버�
 
 
 // CEasyTermView 메시지 처리기
+
+
+void CEasyTermView::OnSize(UINT nType, int cx, int cy)
+{
+	RECT	rc;
+
+	CFormView::OnSize(nType, cx, cy);
+
+	GetClientRect(&rc);
+
+	// TODO: 여기에 메시지 처리기 코드를 추가합니다.
+	if (m_stdout) {
+		m_stdout.MoveWindow( 0, 40, rc.right-rc.left, rc.bottom - rc.top, 1);
+	}
+}
+
+
+void CEasyTermView::OnBnClickedButton1()
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	m_stdout.ResetContent();
+}
+
+
+void CEasyTermView::AddDatatoListbox(int iLevel, CString str)
+{
+	CString strData;
+	SYSTEMTIME st;
+
+	GetLocalTime(&st);
+
+	strData.AppendFormat(_T("%02d:%02d:%02d.%03d"), st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+	for (int i = 0; i < iLevel + 1; i++) {
+		strData = strData + _T("     ");
+	}
+
+	strData = strData + str;
+	m_stdout.AddString(strData);
+}
+
+void CEasyTermView::AddDatatoListbox(int iLevel, char* pszstr)
+{
+	CString strData;
+	SYSTEMTIME st;
+
+	GetLocalTime(&st);
+
+	strData.AppendFormat(_T("%02d:%02d:%02d.%03d"), st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+	for (int i = 0; i < iLevel + 1; i++) {
+		strData = strData + _T("     ");
+	}
+	strData.AppendFormat(_T("%s"), pszstr);
+	
+	m_stdout.AddString(strData);
+}

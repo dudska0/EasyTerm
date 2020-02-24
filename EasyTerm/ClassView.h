@@ -29,6 +29,7 @@ protected:
 	UINT m_nCurrSort;
 
 	void FillClassView();
+	virtual BOOL TreeDoubleClick(MSG* pMsg);
 
 // 재정의입니다.
 public:
@@ -49,6 +50,11 @@ protected:
 	afx_msg void OnSort(UINT id);
 	afx_msg void OnUpdateSort(CCmdUI* pCmdUI);
 
+	afx_msg void OnTreeDblClick(NMHDR* pNmhdr, LRESULT* pResult);
+
 	DECLARE_MESSAGE_MAP()
+public:
+//	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
+//	afx_msg void OnNcLButtonDblClk(UINT nHitTest, CPoint point);
 };
 

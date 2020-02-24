@@ -12,6 +12,10 @@
 #include "EasyTermDoc.h"
 #include "EasyTermView.h"
 
+#include <crtdbg.h>
+
+#define _CRTDBG_MAP_ALLOC
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -143,6 +147,7 @@ int CEasyTermApp::ExitInstance()
 {
 	//TODO: 추가한 추가 리소스를 처리합니다.
 	AfxOleTerm(FALSE);
+	_CrtDumpMemoryLeaks();
 
 	return CWinAppEx::ExitInstance();
 }
@@ -215,3 +220,10 @@ void CEasyTermApp::SaveCustomState()
 
 
 
+
+
+void CEasyTermApp::OnFileOpen()
+{
+	// TODO: 여기에 명령 처리기 코드를 추가합니다.
+	AfxMessageBox(_T("TEST"));
+}

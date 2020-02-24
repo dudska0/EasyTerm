@@ -8,6 +8,8 @@
 
 #include "MainFrm.h"
 
+#include "EasyTermDoc.h"
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -27,6 +29,7 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWndEx)
 	ON_COMMAND(ID_VIEW_CAPTION_BAR, &CMainFrame::OnViewCaptionBar)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_CAPTION_BAR, &CMainFrame::OnUpdateViewCaptionBar)
 	ON_COMMAND(ID_TOOLS_OPTIONS, &CMainFrame::OnOptions)
+	ON_COMMAND(ID_FILE_OPEN, &CMainFrame::OnFileOpen)
 END_MESSAGE_MAP()
 
 static UINT indicators[] =
@@ -341,3 +344,20 @@ BOOL CMainFrame::LoadFrame(UINT nIDResource, DWORD dwDefaultStyle, CWnd* pParent
 	return TRUE;
 }
 
+
+
+void CMainFrame::OnFileOpen()
+{
+	// TODO: 여기에 명령 처리기 코드를 추가합니다.
+	CString szFilter("Data File (*.dat)|*.dat|All Files(*.*)|*.*||");
+	CFileDialog dlg( 1, _T("*.dat"), NULL, OFN_HIDEREADONLY, szFilter);
+
+	if (dlg.DoModal() == IDOK) {
+		CEasyTermDoc* pDoc = (CEasyTermDoc*)GetActiveDocument();
+		CString ErrStr;
+		if (pDoc->OpenDataFile(dlg.GetFileName(), ErrStr) == false) {
+			MessageBox(ErrStr, "error", MB_ICONERROR);
+		}
+	}
+
+}

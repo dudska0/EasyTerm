@@ -37,6 +37,11 @@ protected:
 // 구현입니다.
 public:
 	virtual ~CEasyTermView();
+	void AddDatatoListbox(int iLevel, CString str);
+	void AddDatatoListbox(int iLevel, char* pszStr);
+
+
+
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
@@ -50,6 +55,10 @@ protected:
 	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnContextMenu(CWnd* pWnd, CPoint point);
 	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg void OnSize(UINT nType, int cx, int cy);
+	CListBox m_stdout;
+	afx_msg void OnBnClickedButton1();
 };
 
 #ifndef _DEBUG  // EasyTermView.cpp의 디버그 버전
