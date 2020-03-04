@@ -112,7 +112,12 @@ void CResponse::Delete_Response_Data(char* pszKeyVal)
 	
 	kaCSecsResponseData* ptr = ((kaCSecsResponseData *) m_pData) + idx;
 
-	memset(&m_pData[idx], 0, sizeof(kaCSecsResponseData));
+	ptr->Set_Aux_Data(0);
+	ptr->Set_Use(false);
+	ptr->Set_Resp_Mode(-1);
+
+	ptr->Set_Key_Value("");
+	ptr->Set_Resp_Data("");
 }
 
 void CResponse::Delete_Response_Data(int index)
