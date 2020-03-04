@@ -20,6 +20,6 @@ class CResponseItem
 		int Get_Resp_Mode();
 		void Set_Resp_Mode(int iVal);
 
-		virtual char* Get_Resp_Data(void *pParam);
+		virtual bool Parse(char* pszData) = 0;
 };
 

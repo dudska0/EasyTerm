@@ -15,6 +15,7 @@
 #include "EasyTermView.h"
 
 #include "CSecsResponseData.h"
+#include "AsciiTable.h"
 
 #include <propkey.h>
 
@@ -36,12 +37,20 @@ CEasyTermDoc::CEasyTermDoc() noexcept
 {
 	// TODO: 여기에 일회성 생성 코드를 추가합니다.
 	m_pResp = new CResponse();
+	m_pDecoder = new kaSecsDecoder();
+	m_pConfig = new CCommConfig();
 }
 
 CEasyTermDoc::~CEasyTermDoc()
 {
 	delete m_pResp;
 	m_pResp = NULL;
+
+	delete m_pDecoder;
+	m_pDecoder = NULL;
+
+	delete m_pConfig;
+	m_pConfig = NULL;
 }
 
 BOOL CEasyTermDoc::OnNewDocument()
@@ -54,9 +63,6 @@ BOOL CEasyTermDoc::OnNewDocument()
 
 	return TRUE;
 }
-
-
-
 
 // CEasyTermDoc serialization
 
@@ -148,7 +154,7 @@ bool CEasyTermDoc::OpenDataFile(CString sFileName, CString &strError)
 	int	  iBufCnt = 0;
 	CFile dataFile;
 	char  szErrMsg[512] = { 0, };
-	unsigned char  szLinebuf[512] = { 0, };
+	unsigned char  szLinebuf[1024] = { 0, };
 
 	CFileException ex;
 
@@ -157,7 +163,7 @@ bool CEasyTermDoc::OpenDataFile(CString sFileName, CString &strError)
 
 		ULONG ulSize = (ULONG) dataFile.GetLength();
 
-		CMainFrame* pFrm = (CMainFrame *)AfxGetMainWnd();
+		CMainFrame* pFrm = (CMainFrame *)AfxGetApp()->GetMainWnd();
 		CEasyTermView* pView = (CEasyTermView *)pFrm->GetActiveView();
 
 		BYTE* buf = (BYTE *)malloc(ulSize);
@@ -170,12 +176,32 @@ bool CEasyTermDoc::OpenDataFile(CString sFileName, CString &strError)
 		{
 			dwRead = dataFile.Read(buf, ulSize);
 			if (dwRead > 0) {
+				// Data Clear
+				for (int i = 0; i < MAX_RESP_SIZE; i++) {
+					m_pResp->Delete_Response_Data(i);
+				}
+
 				for (ULONG i = 0; i < ulSize; i++) {
-					szLinebuf[iBufCnt++] = *(buf+i);
+					
 					if ((*(buf + i) == 0x0A) || (*(buf + i) == 0x0D) || (*(buf + i) == 0x00)) {
+						szLinebuf[iBufCnt++] = 0x00;
 						if (iBufCnt > 1) {
-							iBufCnt = 0;
 							//pView->AddDatatoListbox(0, (char *)szLinebuf);
+							if (strlen((char *) szLinebuf) == 0) continue;
+							if (m_pResp->Set_Response_Data((char *) szLinebuf) == false) {
+								return false;
+							}
+							memset(szLinebuf, 0, sizeof(char) * 512);
+						}
+						iBufCnt = 0;
+					}
+					else {
+						szLinebuf[iBufCnt++] = *(buf + i);
+						if (i == ( ulSize - 1)){
+							szLinebuf[iBufCnt++] = 0x00;
+							if (m_pResp->Set_Response_Data((char *)szLinebuf) == false) {
+								return false;
+							}
 							memset(szLinebuf, 0, sizeof(char) * 512);
 						}
 					}
@@ -187,10 +213,9 @@ bool CEasyTermDoc::OpenDataFile(CString sFileName, CString &strError)
 
 			return true;
 		}
-		catch (CException* ex)
+		catch (CException* )
 		{
 			free(buf);
-			AfxMessageBox("Error" );
 		}
 
 	}
@@ -199,7 +224,6 @@ bool CEasyTermDoc::OpenDataFile(CString sFileName, CString &strError)
 		strError.AppendFormat(_T("File Open Error : "));
 		strError += sFileName;
 		strError.AppendFormat(_T(" / Exception :"));
-		ex.GetErrorMessage( szErrMsg, 511, 0);
 		strError.AppendFormat(_T(" %s"), szErrMsg );
 
 		//MessageBox(AfxGetMainWnd()->m_hWnd, szErrMsg, "Error", MB_ICONERROR);
@@ -208,4 +232,119 @@ bool CEasyTermDoc::OpenDataFile(CString sFileName, CString &strError)
 	}
 
 	return false;
+}
+
+int CEasyTermDoc::Decode_Stream(unsigned char* pucStream, CString& sSxFy, CString& sMsg)
+{
+	m_pDecoder->ReadStream(pucStream);
+	sMsg = m_pDecoder->Get_Secs_Message();
+	m_pDecoder->Get_StreamFunction(sSxFy);
+
+	return 0;
+}
+
+void CEasyTermDoc::Set_Comm_Config(CCommConfig* pConfig)
+{
+	if (m_pConfig != NULL) {
+		memcpy( m_pConfig, pConfig, sizeof(CCommConfig));
+	}
+}
+
+void CEasyTermDoc::Set_Data(CCommConfig* pConfig)
+{
+	if (m_pConfig != NULL) {
+		memcpy( pConfig, m_pConfig, sizeof(CCommConfig));
+	}
+}
+
+bool CEasyTermDoc::Make_Response(char* szKeyVal, int iMode )
+{
+	int idx = -1;
+	CMainFrame* pFrame = (CMainFrame *) AfxGetApp()->GetMainWnd();
+	CEasyTermView* pView = (CEasyTermView *)(pFrame->GetActiveView());
+
+	// Secs Section
+	CSecsSerial* pComm = (CSecsSerial *)(pFrame->GetCommObject());
+	m_pResp->Set_Response_Mode(1);
+	idx = m_pResp->Find_IndexbyKey(szKeyVal);
+	if (idx == -1) {
+		return false;
+	}
+	
+	kaCSecsResponseData* pData =  m_pResp->Get_ResponseData(idx);
+	//if (pComm->Send_Response(pData) == false) {
+	//	return false;
+	//}
+
+	CString str_buf;
+	kaMemStr* pStr = NULL;
+	pStr = pComm->GetMemStr();
+	pStr->ClearString(true);
+
+
+	long lsystembytes = m_pDecoder->Get_SystemBytes();
+	pComm->GetEncoder()->Set_SystemBytes(lsystembytes);
+
+	// Encoder data
+	if (pComm->GetEncoder()->Make_Packet(m_pDecoder->Get_DeviceID(), pData, pStr) == false) {
+		pComm->Set_CommStep(SECSCOMM::WAIT_ENQ_0);
+		return false;
+	}
+
+	// Send ENQ
+	if (pComm->WriteChar(CODE_ASCII_ENQ) == false) {
+		pComm->Set_CommStep(SECSCOMM::WAIT_ENQ_0);
+		return false;
+	}
+
+	str_buf.AppendFormat(">> Send ENQ ");
+	pView->StrMsg_AddString(str_buf);
+	str_buf.Empty();
+	pComm->Set_CommStep(SECSCOMM::WAIT_EOT_3);
+
+	// Receive EOT
+	if (pComm->ReadWaitChar(CODE_ASCII_EOT, 10) == false) {
+		pComm->Set_CommStep(SECSCOMM::WAIT_ENQ_0);
+		return false;
+	}
+	str_buf.AppendFormat("Recv EOT <<");
+	pView->StrMsg_AddString(str_buf);
+	str_buf.Empty();
+	pComm->Set_CommStep(SECSCOMM::SEND_MAINDATA_4);
+
+	
+
+	// Send Response
+	if (pComm->WriteSecsData(pStr->Get_Str_Length(), pStr->GetString()) == false) {
+		pComm->Set_CommStep(SECSCOMM::WAIT_ENQ_0);
+		return false;
+	}
+
+	CString csKeyVal;
+	CString csDeocdeMsg;
+
+	csKeyVal.Empty();
+	csDeocdeMsg.Empty();
+	
+	unsigned char* pchStr = pComm->Get_Buffer();
+	
+	Decode_Stream(pchStr,csKeyVal, csDeocdeMsg);
+	pView->SecsMsg_AddString(szKeyVal, pData->Get_To_Host(), pData->Get_Wait_Response(), pData->Get_End_Flag(), csDeocdeMsg, pComm->GetMemStr());
+
+
+	// Receive ACK
+	pComm->Set_CommStep(SECSCOMM::WAIT_ACK_7);
+	if (pComm->ReadWaitChar(CODE_ASCII_ACK, 10) == false) {
+		pComm->Set_CommStep(SECSCOMM::WAIT_ENQ_0);
+		return false;
+	}
+	str_buf.AppendFormat("Recv ACK <<");
+	pView->StrMsg_AddString(str_buf);
+	str_buf.Empty();
+
+
+	pComm->Set_CommStep(SECSCOMM::WAIT_ENQ_0);
+
+	
+	return true;
 }

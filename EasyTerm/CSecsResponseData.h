@@ -1,22 +1,30 @@
 #pragma once
 
 #include "CResponseItem.h"
+#include "KStr.h"
+#include "kaMemStr.h"
+#include "CSecsResponseData.h"
 
-class CSecsResponseData : public CResponseItem
+class kaCSecsResponseData : public CResponseItem
 {
 	private:
-		char  m_szRespData[255];
-		bool  m_bWaitResponse;
-		bool  m_bEndPacket;
-		bool  m_bToHost;
-		int	  m_iAuxData;
+		bool  m_bWaitResponse;			//	Get_Wait_Response
+		bool  m_bEndPacket;				//	Get_End_Flag
+		bool  m_bToHost;				//	Get_To_Host
+		int	  m_iAuxData;				//	Get_Aux_Data
+		char  m_szRespData[1024];		//	Get_Resp_Data
+		CKStr* m_pKStr;					
+		kaMemStr* m_pMemStr;
 
 	public :
-		CSecsResponseData();
-		~CSecsResponseData();
+		kaCSecsResponseData();
+		~kaCSecsResponseData();
 		void Set_Resp_Data(char* szRespData);
 		void Set_Resp_Data(int iAuxData, int iRespMode, char* szRespData);
-		char* Get_Resp_Data(void *pParam);
+		char* Get_Resp_Data();
+
+		unsigned char Get_StreamNo();			// Key value에서 구한다.
+		unsigned char Get_FunctionNo();			// Key value에서 구한다.
 
 		void Set_Wait_Response(bool bsts);
 		bool Get_Wait_Response();
@@ -30,6 +38,8 @@ class CSecsResponseData : public CResponseItem
 		int Get_Aux_Data();
 		void Set_Aux_Data(int iData);
 
-		bool Parse(char* pszData);
+		virtual bool Parse(char* pszData);
+		kaCSecsResponseData& operator=(const kaCSecsResponseData& pRespData);
+
 };
 

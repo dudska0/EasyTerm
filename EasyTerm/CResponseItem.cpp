@@ -3,6 +3,8 @@
 
 CResponseItem::CResponseItem()
 {
+	//char	m_szKeyVal[50];
+	memset(m_szKeyVal, 0, sizeof(char) * 50);
 }
 
 CResponseItem::~CResponseItem()
@@ -38,9 +40,4 @@ int CResponseItem::Get_Resp_Mode()
 void CResponseItem::Set_Resp_Mode(int iVal)
 {
 	m_iRespMode = iVal;
-}
-
-char* CResponseItem::Get_Resp_Data(void *pParam)
-{
-	return NULL;
 }

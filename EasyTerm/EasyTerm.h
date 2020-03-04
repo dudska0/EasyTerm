@@ -3,6 +3,9 @@
 //
 #pragma once
 
+#include "Comm.h"
+#include "kaMemStr.h"
+
 #ifndef __AFXWIN_H__
 	#error "include 'pch.h' before including this file for PCH"
 #endif
@@ -16,6 +19,10 @@
 
 class CEasyTermApp : public CWinAppEx
 {
+private:
+	bool m_bThreadTerm;
+	CWinThread* m_pThread;
+
 public:
 	CEasyTermApp() noexcept;
 
@@ -35,6 +42,15 @@ public:
 	afx_msg void OnAppAbout();
 	DECLARE_MESSAGE_MAP()
 	afx_msg void OnFileOpen();
+
+	static UINT ThreadForCommRead(LPVOID pParam);
+	void Set_Thread_Terminate(bool bVal);
+	bool Get_Thread_Terminate();
+	bool Get_Comm_Established();
+	bool ProcessCommData(kaMemStr* pStr);
+
+	bool Read(char& ch);
+
 };
 
 extern CEasyTermApp theApp;

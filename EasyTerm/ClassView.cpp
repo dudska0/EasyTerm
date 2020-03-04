@@ -336,7 +336,7 @@ void CClassView::OnChangeVisualStyle()
 
 void CClassView::OnTreeDblClick(NMHDR* pNmhdr, LRESULT* pResult)
 {
-	CMainFrame* pFrm = (CMainFrame *)AfxGetMainWnd();
+	CMainFrame* pFrm = (CMainFrame *)AfxGetApp()->GetMainWnd();
 	CEasyTermView* pView = (CEasyTermView *) pFrm->GetActiveView();
 	pView->m_stdout.AddString(_T("TEST-Tree-DblClick"));
 }
@@ -347,7 +347,7 @@ BOOL CClassView::TreeDoubleClick(MSG* pMsg)
 	HTREEITEM hTreeItem;
 	CTreeCtrl* pWndTree = (CTreeCtrl*)&m_wndClassView;
 
-	CMainFrame* pFrm = (CMainFrame *)AfxGetMainWnd();
+	CMainFrame* pFrm = (CMainFrame *)AfxGetApp()->GetMainWnd();
 	CEasyTermView* pView = (CEasyTermView *)pFrm->GetActiveView();
 
 	ASSERT_VALID(pWndTree);
@@ -356,8 +356,8 @@ BOOL CClassView::TreeDoubleClick(MSG* pMsg)
 		hTreeItem = pWndTree->GetSelectedItem();
 		str = pWndTree->GetItemText(hTreeItem);
 		
-		pView->AddDatatoListbox(1, str);
-		pView->AddDatatoListbox(2, _T("Sub"));
+		//pView->AddDatatoListbox(1, str);
+		//pView->AddDatatoListbox(2, _T("Sub"));
 	}
 
 	return TRUE;

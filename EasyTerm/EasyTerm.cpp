@@ -11,6 +11,9 @@
 
 #include "EasyTermDoc.h"
 #include "EasyTermView.h"
+#include "SecsSerial.h"
+#include "kaMemStr.h"
+#include "AsciiTable.h"
 
 #include <crtdbg.h>
 
@@ -125,11 +128,9 @@ BOOL CEasyTermApp::InitInstance()
 		return FALSE;
 	AddDocTemplate(pDocTemplate);
 
-
 	// 표준 셸 명령, DDE, 파일 열기에 대한 명령줄을 구문 분석합니다.
 	CCommandLineInfo cmdInfo;
 	ParseCommandLine(cmdInfo);
-
 
 
 	// 명령줄에 지정된 명령을 디스패치합니다.
@@ -138,8 +139,10 @@ BOOL CEasyTermApp::InitInstance()
 		return FALSE;
 
 	// 창 하나만 초기화되었으므로 이를 표시하고 업데이트합니다.
+	// Thread Invoke
 	m_pMainWnd->ShowWindow(SW_SHOW);
 	m_pMainWnd->UpdateWindow();
+
 	return TRUE;
 }
 
@@ -208,22 +211,198 @@ void CEasyTermApp::PreLoadState()
 	GetContextMenuManager()->AddMenu(strName, IDR_POPUP_EXPLORER);
 }
 
+// 모든게 다 Load된 이후에...
 void CEasyTermApp::LoadCustomState()
 {
+	m_pThread = AfxBeginThread(ThreadForCommRead, this);
 }
 
 void CEasyTermApp::SaveCustomState()
 {
 }
 
+void CEasyTermApp::Set_Thread_Terminate(bool bVal)
+{
+	this->m_bThreadTerm = bVal;
+}
+
+bool CEasyTermApp::Get_Thread_Terminate()
+{
+	return this->m_bThreadTerm;
+}
+
+
+
 // CEasyTermApp 메시지 처리기
 
+bool CEasyTermApp::Get_Comm_Established()
+{
+	CMainFrame* pFrame = (CMainFrame *)AfxGetApp()->GetMainWnd();
+	if (pFrame == NULL) {
+		return false;
+	}
+
+	CComm* pCom = pFrame->GetCommObject();
+	// if Serial{
+		// if SecsComm {
+		//} SecsComm end
+		return pCom->Get_Use();
+	// } Serial End
+	// else if Socket {
 
 
+	// } Socket End
 
+		return false;
+}
+
+bool CEasyTermApp::Read(char& ch)
+{
+	CMainFrame* pFrame = (CMainFrame *)AfxGetApp()->GetMainWnd();
+	if (pFrame == NULL) {
+		return false;
+	}	
+	
+	CComm* pCom = pFrame->GetCommObject();
+	return pCom->ReadChar(ch);
+}
+
+
+bool CEasyTermApp::ProcessCommData(kaMemStr* pStr)
+{
+	CString str_buf;
+	bool bResult = false;
+	CMainFrame* pFrame = (CMainFrame *) AfxGetApp()->GetMainWnd();
+	//if (pFrame == NULL) {
+	//	return false;
+	//}
+	CEasyTermView* pView = (CEasyTermView *)(pFrame->GetActiveView());
+	CEasyTermDoc* pDoc = pView->GetDocument();
+	
+	// SECS Message Section ------------------------------------------------------------------
+	CString szResKey;
+	CSecsSerial* pCom = (CSecsSerial *) (pFrame->GetCommObject());
+
+
+	if (pStr->Get_Str_Length() == 1) {
+		if (pStr->GetString()[0] == CODE_ASCII_ENQ) {
+			str_buf.AppendFormat("Recv ENQ <<");
+			pView->StrMsg_AddString(str_buf);
+			str_buf.Empty();
+			bResult = pCom->Process_Read_Data(pStr->GetString(), pStr->Get_Str_Length(), szResKey);
+			if (bResult == false) {
+				return false;
+			}
+			str_buf.AppendFormat(">> Send EOT");
+			pView->StrMsg_AddString(str_buf);
+			str_buf.Empty();
+		}
+	}
+	else {
+		bResult = pCom->Process_Read_Data(pStr->GetString(), pStr->Get_Str_Length(), szResKey);
+		if (bResult == false) {
+			return false;
+		}
+	}
+
+	if (pCom->Get_CommStep() == SECSCOMM::SEND_ACK_6) {
+		CString csSXFy;
+		CString csMsg;
+		bool bWait = false;													// Wait Response
+		bool bHost = false;
+		bool bEnd = false;
+
+		csSXFy.Empty();
+		csMsg.Empty();
+
+		unsigned char* pchStr = pStr->GetString();
+
+		pDoc->Decode_Stream(pchStr, csSXFy, csMsg );
+		bWait = pDoc->m_pDecoder->Get_Wait_Response();
+		bHost = pDoc->m_pDecoder->Get_To_Host();
+		bEnd = pDoc->m_pDecoder->Get_End_Flag();
+		pView->SecsMsg_AddString(csSXFy, bHost, bWait, bEnd, csMsg, pStr);		// 메세지 여기서 출력
+		//-------------------------------------------------------------------------------------
+		bResult = pCom->WriteChar(CODE_ASCII_ACK);							// Send Ack
+		if (bResult == false)  return false;
+		str_buf.AppendFormat(">> Send ACK");
+		pView->StrMsg_AddString(str_buf);
+
+		pCom->Set_CommStep(SECSCOMM::WAIT_ENQ_0);
+		//-------------------------------------------------------------------------------------
+		if (bWait) {
+			// Find Response and Send SECS Message
+			char szResKey[32] = { 0, };
+			pCom->GetEncoder()->GetKeyValue(LPSTR(LPCTSTR(csSXFy)), szResKey);
+			pStr->ClearString(true);
+			pDoc->Make_Response(szResKey, 1);
+		}
+	}
+	// ----------------------------------------------------------------------------------------
+
+	
+	return bResult;
+}
+
+UINT CEasyTermApp::ThreadForCommRead(LPVOID pParam)
+{
+	char ch;
+	CEasyTermApp* pThis = (CEasyTermApp *)AfxGetApp();
+	CMainFrame* pFrame = (CMainFrame *)AfxGetApp()->GetMainWnd();
+	//CEasyTermView* pView = (CEasyTermView *) pFrame->GetActiveView();
+	kaMemStr* pStr = new kaMemStr();
+
+	pThis->Set_Thread_Terminate(false);
+	
+	while (true)
+	{
+		// Thread End Check
+		if (pThis->Get_Thread_Terminate()) {
+			break;
+		}
+
+		// Serial 인 경우 처리
+		if (pThis->Get_Comm_Established() == false ){
+			// 끊긴 경우에는 100m 단위로 Loop를 돈다.
+			//if (str.GetLength() > 0) {
+			//	pThis->ProcessCommData(str);
+			//}
+			
+			if (pStr->Get_Str_Length() > 0) {
+				pThis->ProcessCommData(pStr);
+				pStr->ClearString(true);
+			}
+			
+			Sleep(15);
+			continue;
+		}
+		else {
+			if (pThis->Read(ch)) {
+				//str.AppendChar(ch);
+				pStr->AppendChar((unsigned char)ch);
+			}
+			else {
+				if (pStr->Get_Str_Length() > 0) {
+					pThis->ProcessCommData(pStr);
+					pStr->ClearString(true);
+				}
+			}
+		}
+
+		// Port가 Open된 내용에 대해서 Writing을 한다.
+	}
+
+	if (pStr != NULL) {
+		delete pStr;
+		pStr = NULL;
+	}
+
+	return 0;
+}
 
 void CEasyTermApp::OnFileOpen()
 {
 	// TODO: 여기에 명령 처리기 코드를 추가합니다.
 	AfxMessageBox(_T("TEST"));
 }
+

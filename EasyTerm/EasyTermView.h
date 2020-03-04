@@ -3,10 +3,18 @@
 //
 
 #pragma once
-
+#include "SECS_DISPLAY.h"
+#include "kaSecsDecoder.h"
+#include "CSerialPort.h"
+#include "SecsSerial.h"
+#include "kaMemStr.h"
+#include "CTermListBox.h"
 
 class CEasyTermView : public CFormView
 {
+private:
+	CSECS_DISPLAY*	m_pSECSDP;
+
 protected: // serialization에서만 만들어집니다.
 	CEasyTermView() noexcept;
 	DECLARE_DYNCREATE(CEasyTermView)
@@ -19,6 +27,8 @@ public:
 // 특성입니다.
 public:
 	CEasyTermDoc* GetDocument() const;
+	//int DisplaySecsMessage(unsigned char* pucMsg);
+	int SecsMsg_AddString(CString sSxFy, bool bToHost, bool bWait, bool bEnd, CString sMsg, kaMemStr* pkaStr);
 
 // 작업입니다.
 public:
@@ -37,10 +47,6 @@ protected:
 // 구현입니다.
 public:
 	virtual ~CEasyTermView();
-	void AddDatatoListbox(int iLevel, CString str);
-	void AddDatatoListbox(int iLevel, char* pszStr);
-
-
 
 #ifdef _DEBUG
 	virtual void AssertValid() const;
@@ -57,8 +63,18 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnSize(UINT nType, int cx, int cy);
-	CListBox m_stdout;
+	//CListBox m_stdout;
+	CTermListBox m_stdout;
 	afx_msg void OnBnClickedButton1();
+	afx_msg void OnBnClickedButton2();
+	static void MessageDisplay(CString str);
+	afx_msg void OnBnClickedButton3();
+	afx_msg void OnCommSetup();
+	afx_msg void OnCommPortopen();
+	afx_msg void OnCommPortclose();
+	afx_msg void OnBnClickedButton4();
+	afx_msg void OnBnClickedButLogsave();
+	void StrMsg_AddString(CString str);
 };
 
 #ifndef _DEBUG  // EasyTermView.cpp의 디버그 버전

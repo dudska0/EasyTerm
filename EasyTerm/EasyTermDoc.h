@@ -5,12 +5,17 @@
 
 #pragma once
 #include "CRespData.h"
+#include "kaSecsDecoder.h"
+#include "CommConfig.h"
 
 //
 class CEasyTermDoc : public CDocument
 {
 public:
 	CResponse*	m_pResp;
+	kaSecsDecoder* m_pDecoder;
+	CCommConfig* m_pConfig;
+
 
 protected: // serialization에서만 만들어집니다.
 	CEasyTermDoc() noexcept;
@@ -52,4 +57,9 @@ protected:
 #endif // SHARED_HANDLERS
 
 
+public:
+	int Decode_Stream(unsigned char* pucStream, CString& sSxFy, CString& sMsg);
+	void Set_Comm_Config(CCommConfig* pConfig);
+	void Set_Data(CCommConfig* pConfig);
+	bool Make_Response(char* szKeyVal, int iMode);
 };

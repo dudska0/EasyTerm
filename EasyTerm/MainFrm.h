@@ -6,15 +6,21 @@
 #include "FileView.h"
 #include "ClassView.h"
 
+#include "Comm.h"
+
 class CMainFrame : public CFrameWndEx
 {
-	
+protected:
+	CComm*	 m_pComm;
+
 protected: // serialization에서만 만들어집니다.
 	CMainFrame() noexcept;
 	DECLARE_DYNCREATE(CMainFrame)
 
+
 // 특성입니다.
 public:
+	CComm* GetCommObject();
 
 // 작업입니다.
 public:

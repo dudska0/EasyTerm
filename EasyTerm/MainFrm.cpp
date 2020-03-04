@@ -9,6 +9,8 @@
 #include "MainFrm.h"
 
 #include "EasyTermDoc.h"
+#include "Comm.h"
+#include "SecsSerial.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -45,10 +47,15 @@ static UINT indicators[] =
 CMainFrame::CMainFrame() noexcept
 {
 	// TODO: 여기에 멤버 초기화 코드를 추가합니다.
+	m_pComm = new CSecsSerial();
 }
 
 CMainFrame::~CMainFrame()
 {
+	if (m_pComm != NULL) {
+		delete m_pComm;
+		m_pComm = NULL;
+	}
 }
 
 int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
@@ -355,9 +362,16 @@ void CMainFrame::OnFileOpen()
 	if (dlg.DoModal() == IDOK) {
 		CEasyTermDoc* pDoc = (CEasyTermDoc*)GetActiveDocument();
 		CString ErrStr;
-		if (pDoc->OpenDataFile(dlg.GetFileName(), ErrStr) == false) {
+		if (pDoc->OpenDataFile(dlg.GetPathName(), ErrStr ) == false ){
+		//if (pDoc->OpenDataFile(dlg.GetFileName(), ErrStr) == false) {
 			MessageBox(ErrStr, "error", MB_ICONERROR);
 		}
 	}
 
+}
+
+
+CComm* CMainFrame::GetCommObject()
+{
+	return m_pComm;
 }
